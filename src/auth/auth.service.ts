@@ -23,9 +23,10 @@ export class AuthService {
     return this.jwtService.sign({ id: user.id, email: user.email });
   }
 
-  async login(LoginDTO: LoginDTO) {
-    const user = await this.usersService.findUserByEmail(LoginDTO.email);
-    if (!user) {
+  async login(loginDTO: LoginDTO) {
+    const user = await this.usersService.findUserByEmail(loginDTO.email);
+    const comparedPass = await bcrypt.compare(loginDTO.password, user?.password)
+    if (!user || !comparedPass) {
       throw new UnauthorizedException('Invalid credentials');
     }
     return this.jwtService.sign({ id: user.id, email: user.email });
