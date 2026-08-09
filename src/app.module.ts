@@ -18,10 +18,11 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         database: config.get<string>('DB_NAME'),
         // entities: [User, Session, Notification, Post, Comment], // add your entities here
         synchronize: true, // set to false in production,
-        Inject: [ConfigService],
       }),
+      inject: [ConfigService],
     }),
-    AuthModule],
+    AuthModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
