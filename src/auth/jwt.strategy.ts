@@ -2,13 +2,19 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, ExtractJwt } from 'passport-jwt';
+import { parseCookie } from 'cookie';
+import type { Request } from 'express';
 
 interface JwtPayload {
-  sub: string;
-  username?: string;
-  email?: string;
+  id: number;
+  email: string;
   iat?: number;
   exp?: number;
+}
+
+interface AuthenticatedUser {
+  id: number;
+  email: string;
 }
 
 @Injectable()
@@ -20,15 +26,22 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     super({
-      jwtFromRequest: (request) =>
-        ExtractJwt.fromAuthHeaderAsBearerToken()(request) ||
-        request?.cookies?.access_token,
+      // jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (req: Request): string | null => {
+          const cookieHeader = req.headers.cookie;
+          if (!cookieHeader) return null;
+
+          const cookies = parseCookie(cookieHeader);
+          return cookies.access_token ?? null;
+        },
+      ]),
       secretOrKey: jwtSecret,
     });
   }
 
-  validate(payload: any) {
-    if (!payload || !payload.id) {
+  validate(payload: JwtPayload): AuthenticatedUser {
+    if (!payload.id || !payload.email) {
       throw new UnauthorizedException('Invalid JWT payload');
     }
 
@@ -38,4 +51,3 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     };
   }
 }
-
