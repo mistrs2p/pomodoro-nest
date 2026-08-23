@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { createUserDTO } from './dto/create-user.dto';
 import { LoginDTO } from './dto/login.dto';
@@ -15,17 +16,36 @@ export class AuthController {
   @Post('register')
   async register(
     @Body() createUserDTO: createUserDTO,
+    @Res({ passthrough: true }) response: Response,
   ): Promise<{ token: string }> {
-    // register logic here
     const token = await this.authService.register(createUserDTO);
+    this.setAccessTokenCookie(response, token);
     return { token };
   }
 
   @Post('login')
-  async login(@Body() LoginDTO: LoginDTO): Promise<{ token: string }> {
-    // register logic here
+  async login(
+    @Body() LoginDTO: LoginDTO,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<{ token: string }> {
     const token = await this.authService.login(LoginDTO);
+    this.setAccessTokenCookie(response, token);
     return { token };
+  }
+
+  @Post('logout')
+  logout(@Res({ passthrough: true }) response: Response) {
+    response.clearCookie('access_token', { path: '/' });
+    return { success: true };
+  }
+
+  private setAccessTokenCookie(response: Response, token: string) {
+    response.cookie('access_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+    });
   }
 
   @Get('profile')
