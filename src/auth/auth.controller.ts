@@ -77,7 +77,7 @@ export class AuthController {
   @UseGuards(AuthGuard('google'))
   async googleAuthCallback(
     @Req() req: any,
-    @Res({ passthrough: true }) res: Response,
+    @Res() res: Response,
   ) {
     const user = req.user;
     const token = await this.authService.socialLogin(user);
@@ -94,7 +94,7 @@ export class AuthController {
   @UseGuards(AuthGuard('github'))
   async githubAuthCallback(
     @Req() req: any,
-    @Res({ passthrough: true }) res: Response,
+    @Res() res: Response,
   ) {
     const user = req.user;
     const token = await this.authService.socialLogin(user);
