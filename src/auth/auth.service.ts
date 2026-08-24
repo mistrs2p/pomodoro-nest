@@ -10,6 +10,25 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
   ) {}
+
+  async socialLogin(userData: {
+    email: string;
+    name: string;
+    provider: string;
+  }) {
+    let user = await this.usersService.findUserByEmail(userData.email);
+
+    if (!user) {
+      user = await this.usersService.createUser({
+        email: userData.email,
+        firstName: userData.name,
+        lastName: userData.name,
+        password: '',
+      });
+    }
+    return this.jwtService.sign({ id: user.id, email: user.email });
+  }
+
   async register(createUserDTO: createUserDTO): Promise<string> {
     // encrypt the password before saving the user to the database
     const saltRounds = 10;
@@ -25,7 +44,10 @@ export class AuthService {
 
   async login(loginDTO: LoginDTO) {
     const user = await this.usersService.findUserByEmail(loginDTO.email);
-    const comparedPass = await bcrypt.compare(loginDTO.password, user?.password)
+    const comparedPass = await bcrypt.compare(
+      loginDTO.password,
+      user?.password,
+    );
     if (!user || !comparedPass) {
       throw new UnauthorizedException('Invalid credentials');
     }

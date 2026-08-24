@@ -35,19 +35,10 @@ export class AuthController {
   async login(
     @Body() LoginDTO: LoginDTO,
     @Res({ passthrough: true }) res: Response,
-    // ): Promise<{ token: string }> {
   ): Promise<{ message: string }> {
-    // register logic here
     const token = await this.authService.login(LoginDTO);
-    res.cookie('access_token', token, {
-      httpOnly: true,
-      sameSite: 'strict',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 24 * 60 * 60 * 1000, // 1 day
-      path: '/',
-    });
+    this.setAccessTokenCookie(res, token);
     return { message: 'Login successful, token set in cookie' };
-    // return { token };
   }
 
   @Post('logout')
@@ -61,6 +52,8 @@ export class AuthController {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
+      maxAge: 24 * 60 * 60 * 1000, // 1 day
+
       path: '/',
     });
   }
@@ -74,5 +67,44 @@ export class AuthController {
       throw new Error('User not found');
     }
     return { email: user.email };
+  }
+
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  async googleAuth(@Req() req: any) {}
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthCallback(
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const user = req.user;
+    const token = await this.authService.socialLogin(user);
+
+    this.setAccessTokenCookie(res, token);
+    res.redirect(this.oauthSuccessUrl());
+  }
+
+  @Get('github')
+  @UseGuards(AuthGuard('github'))
+  async githubAuth(@Req() req: any) {}
+
+  @Get('github/callback')
+  @UseGuards(AuthGuard('github'))
+  async githubAuthCallback(
+    @Req() req: any,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const user = req.user;
+    const token = await this.authService.socialLogin(user);
+
+    this.setAccessTokenCookie(res, token);
+    res.redirect(this.oauthSuccessUrl());
+  }
+
+  private oauthSuccessUrl() {
+    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+    return `${frontendUrl.replace(/\/$/, '')}/auth/callback`;
   }
 }
