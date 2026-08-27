@@ -1,98 +1,54 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Pomodoro API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+The NestJS backend for the Pomodoro application. It provides PostgreSQL persistence, JWT authentication, Google/GitHub OAuth, password authentication, and TOTP-based 2FA.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Run Locally
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
+Requirements: Node.js 20+, Docker Desktop, and npm.
 
 ```bash
-$ npm install
+npm install
+docker compose up -d postgres
+npm run start:dev
 ```
 
-## Compile and run the project
+The API runs at `http://localhost:3001` by default. Create `.env` with database, JWT, frontend, and OAuth values. Local database defaults are `DB_HOST=localhost`, `DB_PORT=5433`, `DB_USERNAME=pomodoro`, `DB_PASSWORD=pomodoro_dev_password`, and `DB_NAME=pomodoro`.
 
-```bash
-# development
-$ npm run start
+Commands: `npm run build`, `npm run test`, `npm run test:e2e`, and `npm run lint`.
 
-# watch mode
-$ npm run start:dev
+## Architecture
 
-# production mode
-$ npm run start:prod
-```
+- `src/main.ts`: bootstrap, validation, CORS, and cookie parsing.
+- `src/auth`: credentials, OAuth strategies, JWT, 2FA, and auth routes.
+- `src/users`: user entity, repository access, and account updates.
+- `docker-compose.yml`: local PostgreSQL service.
 
-## Run tests
+## Authentication Contract
 
-```bash
-# unit tests
-$ npm run test
+Final sessions use an `httpOnly` cookie named `access_token`.
 
-# e2e tests
-$ npm run test:e2e
+- `POST /auth/register`: creates a password account and sets the cookie.
+- `POST /auth/login`: validates credentials; if 2FA is enabled, returns a five-minute `challengeToken` without setting the final cookie.
+- `POST /auth/2fa/verify`: accepts `code` and `challengeToken`, then sets the final cookie.
+- `GET /auth/google` and `/auth/github`: start OAuth login; callbacks set the cookie.
+- `POST /auth/password`: authenticated users set or replace a password for shared login methods.
+- `GET /auth/profile`: protected session check.
+- `POST /auth/logout`: clears the cookie.
 
-# test coverage
-$ npm run test:cov
-```
+Social accounts may have a nullable password until the authenticated user sets one. Registration never silently takes over an existing email.
 
-## Deployment
+## Current Progress
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+- [x] PostgreSQL Docker setup and TypeORM connection.
+- [x] Password registration/login and Google/GitHub OAuth.
+- [x] JWT `httpOnly` cookie sessions.
+- [x] Two-stage 2FA login and password setup for social accounts.
+- [x] Profile, logout, and 2FA management endpoints.
+- [x] Backend build verified.
+- [ ] Add provider ID columns and robust linking rules.
+- [ ] Add integration tests for the complete auth matrix.
+- [ ] Add database migrations.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Handoff Notes
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Start PostgreSQL before the API. Never return the final JWT to frontend JavaScript or store it in localStorage. Keep secrets outside source control. After auth changes, verify password login, social login, 2FA, logout, cookie flags, and profile access.
