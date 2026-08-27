@@ -37,6 +37,8 @@ Final sessions use an `httpOnly` cookie named `access_token`.
 
 Social accounts may have a nullable password until the authenticated user sets one. Registration never silently takes over an existing email.
 
+`AuthGuard('jwt')` protects fully authenticated routes such as profile, password setup, and 2FA management. `TwoFAGuard` protects `/auth/2fa/verify`; it validates the short-lived login challenge and attaches the challenged user before TOTP verification runs.
+
 ## Current Progress
 
 - [x] PostgreSQL Docker setup and TypeORM connection.

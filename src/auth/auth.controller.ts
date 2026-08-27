@@ -15,7 +15,7 @@ import { UsersService } from 'src/users/users.service';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 import { TwoFAService } from './2fa.service';
-import * as speakeasy from 'speakeasy';
+import { TwoFAGuard } from './two-fa.guard';
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -160,14 +160,14 @@ export class AuthController {
     return { message: '2FA verification successful', success: true };
   }
 
+  @UseGuards(TwoFAGuard)
   @Post('2fa/verify')
   async verifyTwoFactorAuthCode(
+    @Req() req: any,
     @Body('code') code: string,
-    @Body('challengeToken') challengeToken: string,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const challenge = this.authService.verifyTwoFactorChallenge(challengeToken);
-    const user = await this.userService.findUserByEmail(challenge.email);
+    const user = await this.userService.findUserByEmail(req.user.email);
     if (!user || !user.twoFactorSecret) {
       throw new UnauthorizedException('2FA not set up for this user');
     }

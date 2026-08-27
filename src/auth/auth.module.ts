@@ -9,6 +9,7 @@ import { JwtStrategy } from './jwt.strategy';
 import { GoogleStrategy } from './google.strategy';
 import { GithubStrategy } from './github.strategy';
 import { TwoFAService } from './2fa.service';
+import { TwoFAGuard } from './two-fa.guard';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -32,6 +33,7 @@ import { TwoFAService } from './2fa.service';
     GoogleStrategy,
     GithubStrategy,
     TwoFAService,
+    TwoFAGuard,
   ],
 })
 export class AuthModule {}
