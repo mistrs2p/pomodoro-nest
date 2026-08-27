@@ -49,6 +49,7 @@ Social accounts may have a nullable password until the authenticated user sets o
 - [x] Backend build verified.
 - [x] Protected Pomodoro session creation and today's-session endpoint.
 - [x] Today's completed focus-session statistics endpoint.
+- [x] Authenticated task endpoints and task-linked focus sessions.
 - [ ] Add provider ID columns and robust linking rules.
 - [ ] Add integration tests for the complete auth matrix.
 - [ ] Add database migrations.

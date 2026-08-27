@@ -14,6 +14,9 @@ export class PomodoroSession {
   @Column({ type: 'integer' })
   durationSeconds!: number;
 
+  @Column({ type: 'integer', nullable: true })
+  taskId!: number | null;
+
   @CreateDateColumn()
   createdAt!: Date;
 }

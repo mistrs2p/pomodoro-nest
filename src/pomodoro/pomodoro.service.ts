@@ -12,7 +12,7 @@ export class PomodoroService {
 
   async createCompletedSession(
     userId: number,
-    data: { type?: PomodoroSession['type']; durationSeconds?: number },
+    data: { type?: PomodoroSession['type']; durationSeconds?: number; taskId?: number | null },
   ) {
     const durationSeconds = data.durationSeconds ?? 1500;
     if (durationSeconds <= 0 || durationSeconds > 24 * 60 * 60) {
@@ -23,6 +23,7 @@ export class PomodoroService {
       userId,
       type: data.type ?? 'focus',
       durationSeconds,
+      taskId: data.taskId ?? null,
     });
     return this.sessionRepository.save(session);
   }
