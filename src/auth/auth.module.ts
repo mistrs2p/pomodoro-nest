@@ -8,6 +8,7 @@ import { StringValue } from 'ms';
 import { JwtStrategy } from './jwt.strategy';
 import { GoogleStrategy } from './google.strategy';
 import { GithubStrategy } from './github.strategy';
+import { TwoFAService } from './2fa.service';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -25,6 +26,12 @@ import { GithubStrategy } from './github.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, GithubStrategy],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    GoogleStrategy,
+    GithubStrategy,
+    TwoFAService,
+  ],
 })
 export class AuthModule {}

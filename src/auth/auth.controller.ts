@@ -13,12 +13,14 @@ import { LoginDTO } from './dto/login.dto';
 import { UsersService } from 'src/users/users.service';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
+import { TwoFAService } from './2fa.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly userService: UsersService,
+    private twoFAService: TwoFAService,
   ) {}
 
   @Post('register')
@@ -108,6 +110,9 @@ export class AuthController {
     const user = req.user;
     const secret = this.twoFAService.generateSecret(user.email);
     await this.userService.setTwoFASecret(user.id, secret.base32);
+    if (!secret.otpauth_url) {
+      throw new Error('OTP Auth URL is missing');
+    }
     const qrcode = await this.twoFAService.generateQRCode(secret.otpauth_url);
     return { qrcode, secret: secret.base32 };
   }

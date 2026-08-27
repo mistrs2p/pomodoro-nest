@@ -18,4 +18,8 @@ export class UsersService {
   async findUserByEmail(email: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { email } });
   }
+
+  setTwoFASecret(id: number, secret: string) {
+    return this.userRepository.update({ id }, { twoFactorSecret: secret });
+  }
 }
