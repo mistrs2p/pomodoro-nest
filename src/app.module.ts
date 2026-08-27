@@ -5,8 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
-import { 2FaserviceService } from './2-faservice/2-faservice.service';
-import { 2FaService } from './2-fa/2-fa.service';
+import { TwoFAService } from './auth/2fa.service';
 
 @Module({
   imports: [
@@ -43,6 +42,6 @@ import { 2FaService } from './2-fa/2-fa.service';
     UsersModule,
   ],
   controllers: [AppController],
-  providers: [AppService, 2FaserviceService, 2FaService],
+  providers: [AppService, TwoFAService],
 })
 export class AppModule {}
