@@ -6,6 +6,7 @@ import {
   Req,
   UseGuards,
   Res,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { createUserDTO } from './dto/create-user.dto';
@@ -14,7 +15,7 @@ import { UsersService } from 'src/users/users.service';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 import { TwoFAService } from './2fa.service';
-
+import * as speakeasy from 'speakeasy';
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -115,5 +116,19 @@ export class AuthController {
     }
     const qrcode = await this.twoFAService.generateQRCode(secret.otpauth_url);
     return { qrcode, secret: secret.base32 };
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('2fa/verify')
+  async verifyTwoFactorAuthCode(@Req() req: any, @Body('code') code: string) {
+    const user = await this.userService.findUserByEmail(req.user.email);
+    if (!user || !user.twoFactorSecret) {
+      throw new UnauthorizedException('2FA not set up for this user');
+    }
+    const verified = this.twoFAService.verifyCode(user.twoFactorSecret, code);
+    if (!verified) {
+      throw new UnauthorizedException('Invalid 2FA');
+    }
+    return { message: '2FA verification successful' };
   }
 }
