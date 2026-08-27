@@ -75,10 +75,7 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthCallback(
-    @Req() req: any,
-    @Res() res: Response,
-  ) {
+  async googleAuthCallback(@Req() req: any, @Res() res: Response) {
     const user = req.user;
     const token = await this.authService.socialLogin(user);
 
@@ -92,10 +89,7 @@ export class AuthController {
 
   @Get('github/callback')
   @UseGuards(AuthGuard('github'))
-  async githubAuthCallback(
-    @Req() req: any,
-    @Res() res: Response,
-  ) {
+  async githubAuthCallback(@Req() req: any, @Res() res: Response) {
     const user = req.user;
     const token = await this.authService.socialLogin(user);
 
@@ -106,5 +100,15 @@ export class AuthController {
   private oauthSuccessUrl() {
     const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
     return `${frontendUrl.replace(/\/$/, '')}/auth/callback`;
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('2fa/generate')
+  async generateTwoFactorAuthSecret(@Req() req: any) {
+    const user = req.user;
+    const secret = this.twoFAService.generateSecret(user.email);
+    await this.userService.setTwoFASecret(user.id, secret.base32);
+    const qrcode = await this.twoFAService.generateQRCode(secret.otpauth_url);
+    return { qrcode, secret: secret.base32 };
   }
 }
