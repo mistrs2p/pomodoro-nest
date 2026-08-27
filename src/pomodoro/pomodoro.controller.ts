@@ -20,4 +20,9 @@ export class PomodoroController {
   findToday(@Req() req: { user: { id: number } }) {
     return this.pomodoroService.findToday(req.user.id);
   }
+
+  @Get('stats/today')
+  getTodayStats(@Req() req: { user: { id: number } }) {
+    return this.pomodoroService.getTodayStats(req.user.id);
+  }
 }

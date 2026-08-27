@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { MoreThanOrEqual, Repository } from 'typeorm';
 import { PomodoroSession } from './entities/pomodoro-session.entity';
 
 @Injectable()
@@ -28,9 +28,20 @@ export class PomodoroService {
   }
 
   findToday(userId: number) {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
     return this.sessionRepository.find({
-      where: { userId },
+      where: { userId, createdAt: MoreThanOrEqual(startOfDay) },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async getTodayStats(userId: number) {
+    const sessions = await this.findToday(userId);
+    const focusSessions = sessions.filter((session) => session.type === 'focus');
+    return {
+      completedSessions: focusSessions.length,
+      focusSeconds: focusSessions.reduce((total, session) => total + session.durationSeconds, 0),
+    };
   }
 }
