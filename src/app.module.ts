@@ -6,6 +6,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UsersModule } from './users/users.module';
 import { TwoFAService } from './auth/2fa.service';
+import { PomodoroModule } from './pomodoro/pomodoro.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { TwoFAService } from './auth/2fa.service';
     }),
     AuthModule,
     UsersModule,
+    PomodoroModule,
   ],
   controllers: [AppController],
   providers: [AppService, TwoFAService],
