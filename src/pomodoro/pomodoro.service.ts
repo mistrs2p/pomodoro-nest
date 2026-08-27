@@ -45,4 +45,32 @@ export class PomodoroService {
       focusSeconds: focusSessions.reduce((total, session) => total + session.durationSeconds, 0),
     };
   }
+
+  async getWeeklyStats(userId: number) {
+    const startOfWeek = new Date();
+    startOfWeek.setHours(0, 0, 0, 0);
+    startOfWeek.setDate(startOfWeek.getDate() - 6);
+
+    const sessions = await this.sessionRepository.find({
+      where: { userId, type: 'focus', createdAt: MoreThanOrEqual(startOfWeek) },
+      order: { createdAt: 'ASC' },
+    });
+    const totals = new Map<string, number>();
+
+    for (let offset = 0; offset < 7; offset += 1) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + offset);
+      totals.set(date.toISOString().slice(0, 10), 0);
+    }
+
+    for (const session of sessions) {
+      const date = session.createdAt.toISOString().slice(0, 10);
+      totals.set(date, (totals.get(date) ?? 0) + session.durationSeconds);
+    }
+
+    return Array.from(totals, ([date, focusSeconds]) => {
+      const weekday = new Date(`${date}T00:00:00`).getDay();
+      return { date, focusSeconds, dayIndex: weekday === 0 ? 6 : weekday - 1 };
+    });
+  }
 }

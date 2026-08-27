@@ -25,4 +25,9 @@ export class PomodoroController {
   getTodayStats(@Req() req: { user: { id: number } }) {
     return this.pomodoroService.getTodayStats(req.user.id);
   }
+
+  @Get('stats/week')
+  getWeeklyStats(@Req() req: { user: { id: number } }) {
+    return this.pomodoroService.getWeeklyStats(req.user.id);
+  }
 }
