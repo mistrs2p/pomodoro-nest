@@ -38,10 +38,36 @@ export class AuthController {
   async login(
     @Body() LoginDTO: LoginDTO,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ message: string }> {
-    const token = await this.authService.login(LoginDTO);
-    this.setAccessTokenCookie(res, token);
-    return { message: 'Login successful, token set in cookie' };
+  ): Promise<{ message: string; twoFARequired: boolean; challengeToken?: string }> {
+    const result = await this.authService.login(LoginDTO);
+
+    if (result.twoFARequired) {
+      return {
+        message: '2FA required',
+        twoFARequired: true,
+        challengeToken: this.authService.createTwoFactorChallenge({
+          id: result.user!.id,
+          email: result.user!.email,
+        }),
+      };
+    }
+
+    this.setAccessTokenCookie(res, result.token!);
+    return {
+      message: 'Login successful, token set in cookie',
+      twoFARequired: false,
+    };
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('password')
+  async setPassword(@Req() req: any, @Body('password') password: string) {
+    if (!password || password.length < 6) {
+      throw new UnauthorizedException('Password must be at least 6 characters');
+    }
+
+    await this.authService.setPassword(req.user.id, password);
+    return { message: 'Password set successfully', success: true };
   }
 
   @Post('logout')
@@ -63,13 +89,12 @@ export class AuthController {
 
   @Get('profile')
   @UseGuards(AuthGuard('jwt'))
-  async profile(@Req() req: any): Promise<{ email: string }> {
-    // register logic here
+  async profile(@Req() req: any): Promise<{ email: string; isTwoFAEnabled: boolean }> {
     const user = await this.userService.findUserByEmail(req.user.email);
     if (!user) {
       throw new Error('User not found');
     }
-    return { email: user.email };
+    return { email: user.email, isTwoFAEnabled: Boolean(user.isTwoFAEnabled) };
   }
 
   @Get('google')
@@ -135,10 +160,14 @@ export class AuthController {
     return { message: '2FA verification successful', success: true };
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Post('2fa/verify')
-  async verifyTwoFactorAuthCode(@Req() req: any, @Body('code') code: string) {
-    const user = await this.userService.findUserByEmail(req.user.email);
+  async verifyTwoFactorAuthCode(
+    @Body('code') code: string,
+    @Body('challengeToken') challengeToken: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const challenge = this.authService.verifyTwoFactorChallenge(challengeToken);
+    const user = await this.userService.findUserByEmail(challenge.email);
     if (!user || !user.twoFactorSecret) {
       throw new UnauthorizedException('2FA not set up for this user');
     }
@@ -146,6 +175,12 @@ export class AuthController {
     if (!verified) {
       throw new UnauthorizedException('Invalid 2FA');
     }
+
+    const token = this.authService.createAccessToken({
+      id: user.id,
+      email: user.email,
+    });
+    this.setAccessTokenCookie(response, token);
     return { message: '2FA verification successful', success: true };
   }
 }
