@@ -19,7 +19,11 @@ export class UsersService {
     return this.userRepository.findOne({ where: { email } });
   }
 
-  setTwoFASecret(id: number, secret: string) {
+  async setTwoFASecret(id: number, secret: string) {
     return this.userRepository.update({ id }, { twoFactorSecret: secret });
+  }
+
+  async enableTwoFa(id: number) {
+    return this.userRepository.update({ id }, { isTwoFAEnabled: true });
   }
 }

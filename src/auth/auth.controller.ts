@@ -119,6 +119,23 @@ export class AuthController {
   }
 
   @UseGuards(AuthGuard('jwt'))
+  @Post('2fa/enable')
+  async enableTwoFactorAuth(@Req() req: any, @Body('code') code: string) {
+    const user = await this.userService.findUserByEmail(req.user.email);
+    if (!user || !user.twoFactorSecret) {
+      throw new UnauthorizedException('2FA not set up for this user');
+    }
+    const verified = this.twoFAService.verifyCode(user.twoFactorSecret, code);
+    if (!verified) {
+      throw new UnauthorizedException('Invalid 2FA');
+    }
+
+    await this.userService.enableTwoFa(user.id);
+
+    return { message: '2FA verification successful', success: true };
+  }
+
+  @UseGuards(AuthGuard('jwt'))
   @Post('2fa/verify')
   async verifyTwoFactorAuthCode(@Req() req: any, @Body('code') code: string) {
     const user = await this.userService.findUserByEmail(req.user.email);
@@ -129,6 +146,6 @@ export class AuthController {
     if (!verified) {
       throw new UnauthorizedException('Invalid 2FA');
     }
-    return { message: '2FA verification successful' };
+    return { message: '2FA verification successful', success: true };
   }
 }
