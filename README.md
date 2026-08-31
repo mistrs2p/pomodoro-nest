@@ -1,60 +1,188 @@
 # Pomodoro API
 
-The NestJS backend for the Pomodoro application. It provides PostgreSQL persistence, JWT authentication, Google/GitHub OAuth, password authentication, and TOTP-based 2FA.
+The REST API for the Pomodoro focus workspace. Built with NestJS and PostgreSQL, it owns identity, secure cookie sessions, social sign-in, TOTP two-factor authentication, focus-session persistence, task data, and daily/weekly statistics.
 
-## Run Locally
+> This repository is the backend. Run the companion Next.js frontend on `http://localhost:3000` for the complete product experience.
 
-Requirements: Node.js 20+, Docker Desktop, and npm.
+## Tech stack
+
+- NestJS 11 and TypeScript
+- TypeORM with PostgreSQL 18
+- Passport strategies for JWT, Google OAuth, and GitHub OAuth
+- bcrypt password hashing
+- Speakeasy TOTP and QR code enrollment
+- class-validator request validation
+- Jest and Supertest test tooling
+- Docker Compose for the local database
+
+## Features
+
+- Email/password registration and login
+- Google and GitHub OAuth
+- JWT access sessions stored in an `httpOnly` cookie
+- Short-lived 2FA login challenge and authenticator-app verification
+- Password setup for social-first accounts
+- Protected profile and security-management endpoints
+- User-scoped Pomodoro sessions and daily/seven-day statistics
+- User-scoped tasks with creation and completion toggles
+- PostgreSQL persistence through TypeORM entities and repositories
+
+## Getting started
+
+### Requirements
+
+- Node.js 20+
+- npm
+- Docker Desktop or a compatible PostgreSQL instance
+
+### Installation
 
 ```bash
+git clone <api-repository-url> pomodoro-nest
+cd pomodoro-nest
+cp .env.example .env
 npm install
 docker compose up -d postgres
 npm run start:dev
 ```
 
-The API runs at `http://localhost:3001` by default. Create `.env` with database, JWT, frontend, and OAuth values. Local database defaults are `DB_HOST=localhost`, `DB_PORT=5433`, `DB_USERNAME=pomodoro`, `DB_PASSWORD=pomodoro_dev_password`, and `DB_NAME=pomodoro`.
+The API starts at `http://localhost:3001`. The root route can be used as a basic availability check.
 
-Commands: `npm run build`, `npm run test`, `npm run test:e2e`, and `npm run lint`.
+## Configuration
+
+| Variable | Local example | Required | Description |
+| --- | --- | --- | --- |
+| `PORT` | `3001` | No | API listen port |
+| `CORS_ORIGIN` | `http://localhost:3000` | No | Allowed credentialed browser origin |
+| `FRONTEND_URL` | `http://localhost:3000` | No | OAuth completion redirect base |
+| `DB_HOST` | `localhost` | Yes | PostgreSQL host |
+| `DB_PORT` | `5433` | Yes | PostgreSQL host port |
+| `DB_USERNAME` | `pomodoro` | Yes | Database user |
+| `DB_PASSWORD` | `pomodoro_dev_password` | Yes | Database password |
+| `DB_NAME` | `pomodoro` | Yes | Database name |
+| `JWT_SECRET` | long random value | Yes | JWT signing key |
+| `JWT_EXPIRATION` | `1d` | Yes | Final access-token lifetime |
+| `GOOGLE_CLIENT_ID` | provider value | For Google login | Google OAuth client ID |
+| `GOOGLE_CLIENT_SECRET` | provider value | For Google login | Google OAuth secret |
+| `GOOGLE_CALLBACK_URL` | `http://localhost:3001/auth/google/callback` | For Google login | Registered Google callback |
+| `GITHUB_CLIENT_ID` | provider value | For GitHub login | GitHub OAuth client ID |
+| `GITHUB_CLIENT_SECRET` | provider value | For GitHub login | GitHub OAuth secret |
+| `GITHUB_CALLBACK_URL` | `http://localhost:3001/auth/github/callback` | For GitHub login | Registered GitHub callback |
+
+The Google strategy temporarily recognizes legacy misspelled `GOGOLE_*` keys, but new environments should use the correctly spelled variables above.
+
+## Database
+
+`docker-compose.yml` starts PostgreSQL on host port `5433` and persists data in the `pgdata` volume.
+
+```bash
+docker compose up -d postgres
+docker compose logs -f postgres
+docker compose down
+```
+
+TypeORM currently uses `synchronize: true`. This is convenient for local development but must be replaced with migrations and disabled in production.
+
+## API reference
+
+All authenticated endpoints use the `access_token` cookie. Browser clients must send requests with credentials enabled.
+
+### Authentication
+
+| Method | Route | Authentication | Purpose |
+| --- | --- | --- | --- |
+| `POST` | `/auth/register` | Public | Create a password account and set the access cookie |
+| `POST` | `/auth/login` | Public | Authenticate; returns a 2FA challenge when required |
+| `POST` | `/auth/2fa/verify` | 2FA challenge | Verify TOTP and set the final access cookie |
+| `POST` | `/auth/logout` | Public | Clear the access cookie |
+| `GET` | `/auth/profile` | JWT cookie | Return email and 2FA status |
+| `POST` | `/auth/password` | JWT cookie | Set or replace the account password |
+| `POST` | `/auth/2fa/generate` | JWT cookie | Create an enrollment secret and QR code |
+| `POST` | `/auth/2fa/enable` | JWT cookie | Verify a code and enable 2FA |
+| `GET` | `/auth/google` | Public | Start Google OAuth |
+| `GET` | `/auth/google/callback` | Google OAuth | Complete Google OAuth |
+| `GET` | `/auth/github` | Public | Start GitHub OAuth |
+| `GET` | `/auth/github/callback` | GitHub OAuth | Complete GitHub OAuth |
+
+### Focus sessions and statistics
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `POST` | `/pomodoro/sessions` | Store a completed session; accepts `type`, `durationSeconds`, and optional `taskId` |
+| `GET` | `/pomodoro/sessions/today` | List the current user's sessions since local start-of-day |
+| `GET` | `/pomodoro/stats/today` | Return completed focus-session count and total focus seconds |
+| `GET` | `/pomodoro/stats/week` | Return seven daily focus totals |
+
+### Tasks
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `GET` | `/pomodoro/tasks` | List the current user's tasks |
+| `POST` | `/pomodoro/tasks` | Create a task with a title up to 160 characters |
+| `PATCH` | `/pomodoro/tasks/:id/toggle` | Toggle completion for a user-owned task |
 
 ## Architecture
 
-- `src/main.ts`: bootstrap, validation, CORS, and cookie parsing.
-- `src/auth`: credentials, OAuth strategies, JWT, 2FA, and auth routes.
-- `src/users`: user entity, repository access, and account updates.
-- `docker-compose.yml`: local PostgreSQL service.
+```text
+src/
+├─ auth/
+│  ├─ auth.controller.ts   HTTP contract and secure cookie handling
+│  ├─ auth.service.ts      Registration, login, social login, JWT issuance
+│  ├─ jwt.strategy.ts      Cookie token extraction and identity validation
+│  ├─ google.strategy.ts   Google profile mapping
+│  ├─ github.strategy.ts   GitHub profile mapping
+│  ├─ 2fa.service.ts       TOTP secret, QR, and code verification
+│  └─ two-fa.guard.ts      Short-lived login challenge validation
+├─ pomodoro/
+│  ├─ pomodoro.service.ts  Session persistence and time aggregation
+│  ├─ task.service.ts      User-scoped task operations
+│  └─ entities/            Session and task database models
+├─ users/                  User entity and account persistence
+├─ app.module.ts           Configuration, database, and feature wiring
+└─ main.ts                 Validation, cookies, CORS, and bootstrap
+```
 
-## Authentication Contract
+## Security behavior
 
-Final sessions use an `httpOnly` cookie named `access_token`.
+- Final access tokens are extracted only from the `access_token` cookie.
+- Cookies are `httpOnly`, `sameSite=lax`, path-scoped to `/`, and marked secure in production.
+- Password login with enabled 2FA does not set a final cookie before TOTP verification.
+- Passwords are hashed and social-only accounts may keep a nullable password until one is explicitly set.
+- Session and task queries are scoped by the authenticated `userId`.
+- Registration does not silently take over an existing email address.
 
-- `POST /auth/register`: creates a password account and sets the cookie.
-- `POST /auth/login`: validates credentials; if 2FA is enabled, returns a five-minute `challengeToken` without setting the final cookie.
-- `POST /auth/2fa/verify`: accepts `code` and `challengeToken`, then sets the final cookie.
-- `GET /auth/google` and `/auth/github`: start OAuth login; callbacks set the cookie.
-- `POST /auth/password`: authenticated users set or replace a password for shared login methods.
-- `GET /auth/profile`: protected session check.
-- `POST /auth/logout`: clears the cookie.
+Before production, add rate limiting, a CSRF threat-model review, stricter validation/exception mapping, secret rotation, structured logging, HTTPS, migrations, and an explicit trusted-proxy/cookie deployment policy.
 
-Social accounts may have a nullable password until the authenticated user sets one. Registration never silently takes over an existing email.
+## Scripts and verification
 
-`AuthGuard('jwt')` protects fully authenticated routes such as profile, password setup, and 2FA management. `TwoFAGuard` protects `/auth/2fa/verify`; it validates the short-lived login challenge and attaches the challenged user before TOTP verification runs.
+| Command | Purpose |
+| --- | --- |
+| `npm run start:dev` | Start in watch mode |
+| `npm run build` | Compile the API |
+| `npm run test` | Run unit tests |
+| `npm run test:e2e` | Run end-to-end tests |
+| `npm run test:cov` | Generate coverage |
+| `npm run lint` | Run ESLint with automatic fixes |
+| `npm run format` | Format source and tests |
 
-## Current Progress
+For a read-only lint check, use:
 
-- [x] PostgreSQL Docker setup and TypeORM connection.
-- [x] Password registration/login and Google/GitHub OAuth.
-- [x] JWT `httpOnly` cookie sessions.
-- [x] Two-stage 2FA login and password setup for social accounts.
-- [x] Profile, logout, and 2FA management endpoints.
-- [x] Backend build verified.
-- [x] Protected Pomodoro session creation and today's-session endpoint.
-- [x] Today's completed focus-session statistics endpoint.
-- [x] Seven-day focus statistics endpoint.
-- [x] Authenticated task endpoints and task-linked focus sessions.
-- [ ] Add provider ID columns and robust linking rules.
-- [ ] Add integration tests for the complete auth matrix.
-- [ ] Add database migrations.
+```bash
+npx eslint "{src,apps,libs,test}/**/*.ts"
+```
 
-## Handoff Notes
+## Roadmap
 
-Start PostgreSQL before the API. Never return the final JWT to frontend JavaScript or store it in localStorage. Keep secrets outside source control. After auth changes, verify password login, social login, 2FA, logout, cookie flags, and profile access.
+- Versioned database migrations and production-safe schema management
+- Full authentication matrix integration tests
+- Password reset and explicit provider linking/unlinking
+- Rate limiting, security headers, CSRF review, and audit logging
+- OpenAPI/Swagger contract generation
+- CI, containerized API deployment, and observability
+
+## Related documentation
+
+- [Full-stack setup](../README.md)
+- [Frontend README](../pomodoro-next-app/README.md)
+- [Portfolio case study](../docs/PORTFOLIO_CASE_STUDY.md)
+- [Resume-ready project copy](../docs/RESUME_PROJECT.md)
