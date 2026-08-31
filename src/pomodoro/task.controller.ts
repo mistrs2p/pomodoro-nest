@@ -11,8 +11,11 @@ export class TaskController {
   findAll(@Req() req: { user: { id: number } }) { return this.taskService.findAll(req.user.id); }
 
   @Post()
-  create(@Req() req: { user: { id: number } }, @Body('title') title: string) {
-    return this.taskService.create(req.user.id, title);
+  create(
+    @Req() req: { user: { id: number } },
+    @Body() body: { title?: string; estimatedPomodoros?: number },
+  ) {
+    return this.taskService.create(req.user.id, body.title ?? '', body.estimatedPomodoros ?? 1);
   }
 
   @Patch(':id/toggle')

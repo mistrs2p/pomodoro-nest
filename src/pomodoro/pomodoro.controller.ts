@@ -11,7 +11,12 @@ export class PomodoroController {
   @Post('sessions')
   createSession(
     @Req() req: { user: { id: number } },
-    @Body() body: { type?: PomodoroSession['type']; durationSeconds?: number },
+    @Body() body: {
+      type?: PomodoroSession['type'];
+      durationSeconds?: number;
+      taskId?: number | null;
+      clientSessionId?: string | null;
+    },
   ) {
     return this.pomodoroService.createCompletedSession(req.user.id, body);
   }
@@ -29,5 +34,10 @@ export class PomodoroController {
   @Get('stats/week')
   getWeeklyStats(@Req() req: { user: { id: number } }) {
     return this.pomodoroService.getWeeklyStats(req.user.id);
+  }
+
+  @Get('stats/overview')
+  getOverview(@Req() req: { user: { id: number } }) {
+    return this.pomodoroService.getOverview(req.user.id);
   }
 }

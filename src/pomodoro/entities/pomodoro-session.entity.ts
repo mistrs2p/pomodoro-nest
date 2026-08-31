@@ -1,6 +1,8 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { PomodoroTask } from './pomodoro-task.entity';
 
 @Entity('pomodoro_sessions')
+@Index(['userId', 'clientSessionId'], { unique: true })
 export class PomodoroSession {
   @PrimaryGeneratedColumn()
   id!: number;
@@ -16,6 +18,13 @@ export class PomodoroSession {
 
   @Column({ type: 'integer', nullable: true })
   taskId!: number | null;
+
+  @ManyToOne(() => PomodoroTask, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'taskId' })
+  task!: PomodoroTask | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  clientSessionId!: string | null;
 
   @CreateDateColumn()
   createdAt!: Date;
