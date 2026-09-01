@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Profile, Strategy } from 'passport-github2';
+import type { SocialAuthUser } from './auth.types';
 
 @Injectable()
 export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
@@ -27,10 +28,11 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
       return done(new Error('GitHub account did not provide an email'));
     }
 
-    return done(null, {
+    const user: SocialAuthUser = {
       email,
       name: profile.displayName || profile.username,
       provider: 'github',
-    });
+    };
+    return done(null, user);
   }
 }

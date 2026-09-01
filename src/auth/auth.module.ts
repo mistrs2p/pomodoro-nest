@@ -19,7 +19,7 @@ import { TwoFAGuard } from './two-fa.guard';
     UsersModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
-      useFactory: async (config: ConfigService) => ({
+      useFactory: (config: ConfigService) => ({
         secret: config.get<string>('JWT_SECRET'),
         signOptions: { expiresIn: config.get<StringValue>('JWT_EXPIRATION') },
       }),

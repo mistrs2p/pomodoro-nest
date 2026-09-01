@@ -6,7 +6,11 @@ import { UsersService } from 'src/users/users.service';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let usersService: { findUserByEmail: jest.Mock; createUser: jest.Mock; updateUserPassword: jest.Mock };
+  let usersService: {
+    findUserByEmail: jest.Mock;
+    createUser: jest.Mock;
+    updateUserPassword: jest.Mock;
+  };
 
   beforeEach(async () => {
     usersService = {
@@ -19,7 +23,10 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: UsersService, useValue: usersService },
-        { provide: JwtService, useValue: { sign: jest.fn(() => 'signed-token') } },
+        {
+          provide: JwtService,
+          useValue: { sign: jest.fn(() => 'signed-token') },
+        },
       ],
     }).compile();
 
@@ -60,7 +67,10 @@ describe('AuthService', () => {
     });
 
     await expect(
-      service.login({ email: 'google-user@example.com', password: 'secret123' }),
+      service.login({
+        email: 'google-user@example.com',
+        password: 'secret123',
+      }),
     ).rejects.toThrow(UnauthorizedException);
   });
 });

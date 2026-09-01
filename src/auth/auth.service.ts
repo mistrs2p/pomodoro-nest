@@ -3,11 +3,12 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { createUserDTO } from './dto/create-user.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from 'src/users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { LoginDTO } from './dto/login.dto';
+import type { SocialAuthUser } from './auth.types';
 @Injectable()
 export class AuthService {
   constructor(
@@ -15,11 +16,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async socialLogin(userData: {
-    email: string;
-    name: string;
-    provider: string;
-  }) {
+  async socialLogin(userData: SocialAuthUser) {
     let user = await this.usersService.findUserByEmail(userData.email);
 
     if (!user) {
@@ -33,9 +30,9 @@ export class AuthService {
     return this.jwtService.sign({ id: user.id, email: user.email });
   }
 
-  async register(createUserDTO: createUserDTO): Promise<string> {
+  async register(createUserDto: CreateUserDto): Promise<string> {
     const existingUser = await this.usersService.findUserByEmail(
-      createUserDTO.email,
+      createUserDto.email,
     );
 
     if (existingUser) {
@@ -45,12 +42,13 @@ export class AuthService {
     // encrypt the password before saving the user to the database
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(
-      createUserDTO.password,
+      createUserDto.password,
       saltRounds,
     );
-    createUserDTO.password = hashedPassword;
-    // save user to database logic here
-    const user = await this.usersService.createUser(createUserDTO);
+    const user = await this.usersService.createUser({
+      ...createUserDto,
+      password: hashedPassword,
+    });
     return this.jwtService.sign({ id: user.id, email: user.email });
   }
 
@@ -75,7 +73,10 @@ export class AuthService {
     );
   }
 
-  verifyTwoFactorChallenge(challengeToken: string): { id: number; email: string } {
+  verifyTwoFactorChallenge(challengeToken: string): {
+    id: number;
+    email: string;
+  } {
     try {
       const payload = this.jwtService.verify<{
         id: number;
@@ -110,7 +111,10 @@ export class AuthService {
       );
     }
 
-    const comparedPass = await bcrypt.compare(loginDTO.password, user.password ?? '');
+    const comparedPass = await bcrypt.compare(
+      loginDTO.password,
+      user.password ?? '',
+    );
 
     if (!comparedPass) {
       throw new UnauthorizedException('Invalid credentials');

@@ -9,13 +9,17 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { createUserDTO } from './dto/create-user.dto';
+import { CreateUserDto } from './dto/create-user.dto';
 import { LoginDTO } from './dto/login.dto';
 import { UsersService } from 'src/users/users.service';
 import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 import { TwoFAService } from './2fa.service';
 import { TwoFAGuard } from './two-fa.guard';
+import type {
+  AuthenticatedRequest,
+  SocialAuthRequest,
+} from './auth.types';
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -26,10 +30,10 @@ export class AuthController {
 
   @Post('register')
   async register(
-    @Body() createUserDTO: createUserDTO,
+    @Body() createUserDto: CreateUserDto,
     @Res({ passthrough: true }) response: Response,
   ): Promise<{ token: string }> {
-    const token = await this.authService.register(createUserDTO);
+    const token = await this.authService.register(createUserDto);
     this.setAccessTokenCookie(response, token);
     return { token };
   }
@@ -38,21 +42,27 @@ export class AuthController {
   async login(
     @Body() LoginDTO: LoginDTO,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ message: string; twoFARequired: boolean; challengeToken?: string }> {
+  ): Promise<{
+    message: string;
+    twoFARequired: boolean;
+    challengeToken?: string;
+  }> {
     const result = await this.authService.login(LoginDTO);
 
     if (result.twoFARequired) {
+      if (!result.user) throw new UnauthorizedException('Invalid login state');
       return {
         message: '2FA required',
         twoFARequired: true,
         challengeToken: this.authService.createTwoFactorChallenge({
-          id: result.user!.id,
-          email: result.user!.email,
+          id: result.user.id,
+          email: result.user.email,
         }),
       };
     }
 
-    this.setAccessTokenCookie(res, result.token!);
+    if (!result.token) throw new UnauthorizedException('Invalid login state');
+    this.setAccessTokenCookie(res, result.token);
     return {
       message: 'Login successful, token set in cookie',
       twoFARequired: false,
@@ -61,7 +71,10 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Post('password')
-  async setPassword(@Req() req: any, @Body('password') password: string) {
+  async setPassword(
+    @Req() req: AuthenticatedRequest,
+    @Body('password') password: string,
+  ) {
     if (!password || password.length < 6) {
       throw new UnauthorizedException('Password must be at least 6 characters');
     }
@@ -89,23 +102,27 @@ export class AuthController {
 
   @Get('profile')
   @UseGuards(AuthGuard('jwt'))
-  async profile(@Req() req: any): Promise<{ email: string; isTwoFAEnabled: boolean }> {
+  async profile(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ email: string; isTwoFAEnabled: boolean }> {
     const user = await this.userService.findUserByEmail(req.user.email);
     if (!user) {
-      throw new Error('User not found');
+      throw new UnauthorizedException('User not found');
     }
     return { email: user.email, isTwoFAEnabled: Boolean(user.isTwoFAEnabled) };
   }
 
   @Get('google')
   @UseGuards(AuthGuard('google'))
-  async googleAuth(@Req() req: any) {}
+  googleAuth() {}
 
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
-  async googleAuthCallback(@Req() req: any, @Res() res: Response) {
-    const user = req.user;
-    const token = await this.authService.socialLogin(user);
+  async googleAuthCallback(
+    @Req() req: SocialAuthRequest,
+    @Res() res: Response,
+  ) {
+    const token = await this.authService.socialLogin(req.user);
 
     this.setAccessTokenCookie(res, token);
     res.redirect(this.oauthSuccessUrl());
@@ -113,13 +130,15 @@ export class AuthController {
 
   @Get('github')
   @UseGuards(AuthGuard('github'))
-  async githubAuth(@Req() req: any) {}
+  githubAuth() {}
 
   @Get('github/callback')
   @UseGuards(AuthGuard('github'))
-  async githubAuthCallback(@Req() req: any, @Res() res: Response) {
-    const user = req.user;
-    const token = await this.authService.socialLogin(user);
+  async githubAuthCallback(
+    @Req() req: SocialAuthRequest,
+    @Res() res: Response,
+  ) {
+    const token = await this.authService.socialLogin(req.user);
 
     this.setAccessTokenCookie(res, token);
     res.redirect(this.oauthSuccessUrl());
@@ -132,7 +151,7 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Post('2fa/generate')
-  async generateTwoFactorAuthSecret(@Req() req: any) {
+  async generateTwoFactorAuthSecret(@Req() req: AuthenticatedRequest) {
     const user = req.user;
     const secret = this.twoFAService.generateSecret(user.email);
     await this.userService.setTwoFASecret(user.id, secret.base32);
@@ -145,7 +164,10 @@ export class AuthController {
 
   @UseGuards(AuthGuard('jwt'))
   @Post('2fa/enable')
-  async enableTwoFactorAuth(@Req() req: any, @Body('code') code: string) {
+  async enableTwoFactorAuth(
+    @Req() req: AuthenticatedRequest,
+    @Body('code') code: string,
+  ) {
     const user = await this.userService.findUserByEmail(req.user.email);
     if (!user || !user.twoFactorSecret) {
       throw new UnauthorizedException('2FA not set up for this user');
@@ -163,7 +185,7 @@ export class AuthController {
   @UseGuards(TwoFAGuard)
   @Post('2fa/verify')
   async verifyTwoFactorAuthCode(
-    @Req() req: any,
+    @Req() req: AuthenticatedRequest,
     @Body('code') code: string,
     @Res({ passthrough: true }) response: Response,
   ) {
