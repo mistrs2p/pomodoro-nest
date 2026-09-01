@@ -23,7 +23,7 @@ The REST API for the Pomodoro focus workspace. Built with NestJS and PostgreSQL,
 - Short-lived 2FA login challenge and authenticator-app verification
 - Password setup for social-first accounts
 - Protected profile and security-management endpoints
-- User-scoped Pomodoro sessions and daily/seven-day statistics
+- User-scoped focus profiles, immutable session snapshots, and daily/seven-day statistics
 - User-scoped tasks with creation and completion toggles
 - PostgreSQL persistence through TypeORM entities and repositories
 
@@ -108,10 +108,21 @@ All authenticated endpoints use the `access_token` cookie. Browser clients must 
 
 | Method | Route | Purpose |
 | --- | --- | --- |
-| `POST` | `/pomodoro/sessions` | Store a completed session; accepts `type`, `durationSeconds`, and optional `taskId` |
+| `POST` | `/pomodoro/sessions` | Idempotently store a task-linked completion with its profile snapshot |
 | `GET` | `/pomodoro/sessions/today` | List the current user's sessions since local start-of-day |
 | `GET` | `/pomodoro/stats/today` | Return completed focus-session count and total focus seconds |
 | `GET` | `/pomodoro/stats/week` | Return seven daily focus totals |
+| `GET` | `/pomodoro/stats/overview` | Return time, streak, best-hour, average-session, and profile breakdown data |
+
+### Focus profiles
+
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `GET` | `/pomodoro/profiles` | List user profiles and provision missing Classic, Quick Focus, and Deep Work presets |
+| `POST` | `/pomodoro/profiles` | Create a bounded custom profile and optionally make it the default |
+| `PATCH` | `/pomodoro/profiles/:id` | Edit a user-owned custom profile |
+| `PATCH` | `/pomodoro/profiles/:id/default` | Select the user's persistent default profile |
+| `DELETE` | `/pomodoro/profiles/:id` | Delete a non-preset, non-default custom profile |
 
 ### Tasks
 
@@ -135,8 +146,9 @@ src/
 │  └─ two-fa.guard.ts      Short-lived login challenge validation
 ├─ pomodoro/
 │  ├─ pomodoro.service.ts  Session persistence and time aggregation
+│  ├─ pomodoro-profile.service.ts  Presets, custom profiles, and defaults
 │  ├─ task.service.ts      User-scoped task operations
-│  └─ entities/            Session and task database models
+│  └─ entities/            Profile, session, and task database models
 ├─ users/                  User entity and account persistence
 ├─ app.module.ts           Configuration, database, and feature wiring
 └─ main.ts                 Validation, cookies, CORS, and bootstrap
@@ -148,7 +160,9 @@ src/
 - Cookies are `httpOnly`, `sameSite=lax`, path-scoped to `/`, and marked secure in production.
 - Password login with enabled 2FA does not set a final cookie before TOTP verification.
 - Passwords are hashed and social-only accounts may keep a nullable password until one is explicitly set.
-- Session and task queries are scoped by the authenticated `userId`.
+- Profile, session, and task operations are scoped by the authenticated `userId`.
+- Client-generated session identifiers make completion retries idempotent.
+- Profile identifiers are ownership-checked and completed sessions retain an immutable duration snapshot.
 - Registration does not silently take over an existing email address.
 
 Before production, add rate limiting, a CSRF threat-model review, stricter validation/exception mapping, secret rotation, structured logging, HTTPS, migrations, and an explicit trusted-proxy/cookie deployment policy.

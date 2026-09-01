@@ -11,11 +11,18 @@ export class PomodoroController {
   @Post('sessions')
   createSession(
     @Req() req: { user: { id: number } },
-    @Body() body: {
+    @Body()
+    body: {
       type?: PomodoroSession['type'];
       durationSeconds?: number;
       taskId?: number | null;
       clientSessionId?: string | null;
+      profileId?: number | null;
+      profileName?: string;
+      focusDurationSeconds?: number;
+      shortBreakDurationSeconds?: number;
+      longBreakDurationSeconds?: number;
+      longBreakEvery?: number;
     },
   ) {
     return this.pomodoroService.createCompletedSession(req.user.id, body);
