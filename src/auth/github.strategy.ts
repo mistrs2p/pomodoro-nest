@@ -30,7 +30,7 @@ export class GithubStrategy extends PassportStrategy(Strategy, 'github') {
 
     const user: SocialAuthUser = {
       email,
-      name: profile.displayName || profile.username,
+      name: profile.displayName || profile.username || 'GitHub User',
       provider: 'github',
     };
     return done(null, user);

@@ -15,28 +15,16 @@ import { PomodoroModule } from './pomodoro/pomodoro.module';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: async (config: ConfigService) => {
-        console.log('Database configuration:', {
-          host: config.get<string>('DB_HOST'),
-          port: config.get<number>('DB_PORT'),
-          username: config.get<string>('DB_USERNAME'),
-          password: config.get<string>('DB_PASSWORD'),
-          database: config.get<string>('DB_NAME'),
-          autoLoadEntities: true,
-          synchronize: true,
-        });
-        return {
-          type: 'postgres',
-          host: config.get<string>('DB_HOST'),
-          port: config.get<number>('DB_PORT'),
-          username: config.get<string>('DB_USERNAME'),
-          password: config.get<string>('DB_PASSWORD'),
-          database: config.get<string>('DB_NAME'),
-          // entities: [User, Session, Notification, Post, Comment], // add your entities here
-          autoLoadEntities: true, // automatically load entities
-          synchronize: true, // set to false in production,
-        };
-      },
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres',
+        host: config.get<string>('DB_HOST', 'localhost'),
+        port: config.get<number>('DB_PORT', 5432),
+        username: config.get<string>('DB_USERNAME', 'postgres'),
+        password: config.get<string>('DB_PASSWORD', 'postgres'),
+        database: config.get<string>('DB_NAME', 'pomodoro'),
+        autoLoadEntities: true,
+        synchronize: false,
+      }),
       inject: [ConfigService],
     }),
     AuthModule,

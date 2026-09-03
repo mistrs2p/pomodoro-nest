@@ -10,7 +10,7 @@ import {
 export type PomodoroPresetKey = 'classic' | 'quick' | 'deepWork';
 
 @Entity('pomodoro_profiles')
-@Index(['userId', 'presetKey'], { unique: true })
+@Index('IDX_profile_user_preset', ['userId', 'presetKey'], { unique: true })
 export class PomodoroProfile {
   @PrimaryGeneratedColumn()
   id!: number;

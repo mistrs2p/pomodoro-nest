@@ -16,10 +16,7 @@ import { AuthGuard } from '@nestjs/passport';
 import type { Response } from 'express';
 import { TwoFAService } from './2fa.service';
 import { TwoFAGuard } from './two-fa.guard';
-import type {
-  AuthenticatedRequest,
-  SocialAuthRequest,
-} from './auth.types';
+import type { AuthenticatedRequest, SocialAuthRequest } from './auth.types';
 @Controller('auth')
 export class AuthController {
   constructor(

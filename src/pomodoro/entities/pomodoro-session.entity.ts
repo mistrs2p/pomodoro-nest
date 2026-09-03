@@ -11,7 +11,9 @@ import { PomodoroTask } from './pomodoro-task.entity';
 import { PomodoroProfile } from './pomodoro-profile.entity';
 
 @Entity('pomodoro_sessions')
-@Index(['userId', 'clientSessionId'], { unique: true })
+@Index('IDX_session_user_client', ['userId', 'clientSessionId'], {
+  unique: true,
+})
 export class PomodoroSession {
   @PrimaryGeneratedColumn()
   id!: number;

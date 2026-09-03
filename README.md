@@ -43,6 +43,7 @@ cd pomodoro-nest
 cp .env.example .env
 npm install
 docker compose up -d postgres
+npm run migration:run
 npm run start:dev
 ```
 
@@ -81,7 +82,15 @@ docker compose logs -f postgres
 docker compose down
 ```
 
-TypeORM currently uses `synchronize: true`. This is convenient for local development but must be replaced with migrations and disabled in production.
+TypeORM schema synchronization is disabled in every environment. The CLI DataSource is located at `src/database/data-source.ts`, and versioned migrations live under `src/database/migrations/`.
+
+```bash
+npm run migration:show
+npm run migration:run
+npm run migration:revert
+```
+
+Run `migration:run` before starting a new environment and as a controlled release step before deploying a new API version. The initial migration is compatible with both an empty database and the earlier development schema created by `synchronize`.
 
 ## API reference
 
@@ -165,7 +174,7 @@ src/
 - Profile identifiers are ownership-checked and completed sessions retain an immutable duration snapshot.
 - Registration does not silently take over an existing email address.
 
-Before production, add rate limiting, a CSRF threat-model review, stricter validation/exception mapping, secret rotation, structured logging, HTTPS, migrations, and an explicit trusted-proxy/cookie deployment policy.
+Before production, add rate limiting, a CSRF threat-model review, secret rotation, structured logging, HTTPS, migration rehearsal in CI, and an explicit trusted-proxy/cookie deployment policy.
 
 ## Scripts and verification
 
@@ -178,6 +187,9 @@ Before production, add rate limiting, a CSRF threat-model review, stricter valid
 | `npm run test:cov` | Generate coverage |
 | `npm run lint` | Run ESLint with automatic fixes |
 | `npm run format` | Format source and tests |
+| `npm run migration:show` | List applied and pending migrations |
+| `npm run migration:run` | Build and apply pending migrations |
+| `npm run migration:revert` | Build and revert the latest migration |
 
 For a read-only lint check, use:
 
@@ -187,7 +199,7 @@ npx eslint "{src,apps,libs,test}/**/*.ts"
 
 ## Roadmap
 
-- Versioned database migrations and production-safe schema management
+- Migration rehearsal and rollback verification in CI
 - Full authentication matrix integration tests
 - Password reset and explicit provider linking/unlinking
 - Rate limiting, security headers, CSRF review, and audit logging
